@@ -5,10 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>LAX // TPE</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inconsolata:wght@400;500;600&display=swap');
+  @font-face{
+    font-family: "MatrixType";
+    src: url("fonts/MatrixtypeDisplay-9MyE5.ttf") format("truetype");
+    font-display: swap;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=JetBrains+Mono:wght@300;400;500;600&family=Inconsolata:wght@400;500;600&display=swap');
 
   :root{
-    --font: "JetBrains Mono", "Inconsolata", "Consolas", ui-monospace, "SF Mono", monospace;
+    --font: "MatrixType", "DotGothic16", "JetBrains Mono", "Inconsolata", "Consolas", ui-monospace, "SF Mono", monospace;
   }
   /* single-hue phosphor monitor: every element uses --p, hierarchy comes from opacity only */
   body.theme-green{
@@ -27,10 +32,8 @@
 
   #crt{
     position:fixed; inset:0; z-index:15; pointer-events:none;
-    background:repeating-linear-gradient(
-      to bottom, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px,
-      transparent 1px, transparent 3px
-    );
+    background-image: radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1.2px);
+    background-size: 4px 4px;
   }
   #vignette{
     position:fixed; inset:0; z-index:14; pointer-events:none;
@@ -53,42 +56,42 @@
   .panel{
     display:flex; flex-direction:column;
     align-items:center; justify-content:center;
-    padding:3.5vh 6vw;
+    padding:1.2vh 4vw;
     touch-action:none;
     transition:transform 0.25s ease;
   }
   .panel.dragging{ transition:none; z-index:10; }
 
   .divider{
-    height:0; width:34vw; border-top:1px dashed rgba(var(--p),0.25);
-    margin:1vh 0;
+    height:0; width:44vw; border-top:1px dashed rgba(var(--p),0.25);
+    margin:0.4vh 0;
   }
 
   .city{
-    font-size:2.6vh; letter-spacing:0.5vh;
+    font-size:3.6vh; letter-spacing:0.5vh;
     color:rgb(var(--p)); opacity:0.85; font-weight:600;
     text-shadow:var(--glow);
-    margin-bottom:1.6vh;
+    margin-bottom:1.4vh;
   }
   .city .sub{ opacity:0.6; margin-left:1ch; }
   .time{
-    font-size:11.5vh; line-height:1;
+    font-size:19vh; line-height:1;
     color:rgb(var(--p)); font-weight:500;
-    letter-spacing:0.1vh;
+    letter-spacing:0.6vh;
     font-variant-numeric: tabular-nums;
     text-shadow:var(--glow);
     white-space:nowrap;
   }
-  .ampm{ font-size:4.2vh; opacity:0.75; margin-left:1.4vh; }
+  .ampm{ font-size:6.8vh; opacity:0.75; margin-left:1.6vh; }
   .date{
-    font-size:2.6vh; color:rgb(var(--p)); opacity:0.65;
-    margin-top:1.8vh; letter-spacing:0.35vh;
+    font-size:3.4vh; color:rgb(var(--p)); opacity:0.65;
+    margin-top:1.6vh; letter-spacing:0.35vh;
     text-shadow:0 0 4px rgba(var(--p),0.3);
   }
   .weather{
-    font-size:2.3vh; color:rgb(var(--p)); opacity:0.7;
-    margin-top:0.9vh; letter-spacing:0.2vh;
-    min-height:2.6vh;
+    font-size:3vh; color:rgb(var(--p)); opacity:0.7;
+    margin-top:0.8vh; letter-spacing:0.2vh;
+    min-height:3.4vh;
   }
   .weather .temp{ opacity:1; text-shadow:0 0 4px rgba(var(--p),0.4); }
 
