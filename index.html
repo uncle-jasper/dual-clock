@@ -183,6 +183,18 @@
   var weatherOn = localStorage.getItem("dc_weather") !== "off";
   var order = JSON.parse(localStorage.getItem("dc_order") || '["LA","TPE"]');
 
+  // optional URL overrides, e.g. ?theme=amber&order=TPE,LA&format=24&weather=off
+  // useful for contexts (like a Mac screensaver config) where you can't interact live
+  var qp = new URLSearchParams(window.location.search);
+  if(qp.get("theme") === "green" || qp.get("theme") === "amber"){ theme = qp.get("theme"); }
+  if(qp.get("format") === "12" || qp.get("format") === "24"){ format = qp.get("format"); }
+  if(qp.get("weather") === "off"){ weatherOn = false; }
+  if(qp.get("weather") === "on"){ weatherOn = true; }
+  if(qp.get("order")){
+    var o = qp.get("order").split(",").map(function(s){ return s.trim().toUpperCase(); });
+    if(o.length === 2 && o.indexOf("LA") > -1 && o.indexOf("TPE") > -1){ order = o; }
+  }
+
   document.body.classList.remove("theme-green","theme-amber");
   document.body.classList.add("theme-"+theme);
   applyWeatherVisibility();
