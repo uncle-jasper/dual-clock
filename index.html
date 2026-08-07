@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>LAX // TPE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inconsolata:wght@400;500;600&display=swap');
+
+  :root{
+    --font: "JetBrains Mono", "Inconsolata", "Consolas", ui-monospace, "SF Mono", monospace;
+  }
+  /* single-hue phosphor monitor: every element uses --p, hierarchy comes from opacity only */
+  body.theme-green{
+    --bg:#010402; --p: 51,255,102; --glow: 0 0 3px rgba(var(--p),0.9), 0 0 10px rgba(var(--p),0.5), 0 0 22px rgba(var(--p),0.25);
+  }
+  body.theme-amber{
+    --bg:#040200; --p: 255,176,0; --glow: 0 0 3px rgba(var(--p),0.9), 0 0 10px rgba(var(--p),0.5), 0 0 22px rgba(var(--p),0.25);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; padding:0; height:100%; width:100%;
+    background:var(--bg); overflow:hidden;
+    font-family:var(--font);
+    -webkit-user-select:none; user-select:none;
+  }
+
+  #crt{
+    position:fixed; inset:0; z-index:15; pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px,
+      transparent 1px, transparent 3px
+    );
+  }
+  #vignette{
+    position:fixed; inset:0; z-index:14; pointer-events:none;
+    box-shadow: inset 0 0 20vh 5vh rgba(0,0,0,0.9);
+  }
+  /* subtle phosphor flicker, CRT-authentic */
+  @keyframes flicker{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.96; }
+  }
+  #stage{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    will-change:transform;
+    transition:transform 2s linear;
+    animation:flicker 6s ease-in-out infinite;
+  }
+
+  .panel{
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding:3.5vh 6vw;
+    touch-action:none;
+    transition:transform 0.25s ease;
+  }
+  .panel.dragging{ transition:none; z-index:10; }
+
+  .divider{
+    height:0; width:34vw; border-top:1px dashed rgba(var(--p),0.25);
+    margin:1vh 0;
+  }
+
+  .city{
+    font-size:2.6vh; letter-spacing:0.5vh;
+    color:rgb(var(--p)); opacity:0.85; font-weight:600;
+    text-shadow:var(--glow);
+    margin-bottom:1.6vh;
+  }
+  .city .sub{ opacity:0.6; margin-left:1ch; }
+  .time{
+    font-size:11.5vh; line-height:1;
+    color:rgb(var(--p)); font-weight:500;
+    letter-spacing:0.1vh;
+    font-variant-numeric: tabular-nums;
+    text-shadow:var(--glow);
+    white-space:nowrap;
+  }
+  .ampm{ font-size:4.2vh; opacity:0.75; margin-left:1.4vh; }
+  .date{
+    font-size:2.6vh; color:rgb(var(--p)); opacity:0.65;
+    margin-top:1.8vh; letter-spacing:0.35vh;
+    text-shadow:0 0 4px rgba(var(--p),0.3);
+  }
+  .weather{
+    font-size:2.3vh; color:rgb(var(--p)); opacity:0.7;
+    margin-top:0.9vh; letter-spacing:0.2vh;
+    min-height:2.6vh;
+  }
+  .weather .temp{ opacity:1; text-shadow:0 0 4px rgba(var(--p),0.4); }
+
+  #status{
+    position:fixed; bottom:1.6vh; left:0; right:0;
+    display:flex; align-items:center; justify-content:center;
+    gap:1ch; font-size:1.2vh; color:rgb(var(--p)); opacity:0.4;
+    letter-spacing:0.4vh; z-index:16;
+  }
+  #dot{
+    width:0.7vh; height:0.7vh; border-radius:50%;
+    background:rgb(var(--p)); box-shadow:var(--glow);
+  }
+
+  .corner{
+    position:fixed; z-index:20;
+    width:20vw; height:20vh;
+    display:flex; color:rgb(var(--p));
+    font-size:1.8vh; opacity:0.16;
+    transition:opacity 0.2s;
+  }
+  .corner:active{ opacity:0.8; }
+  #cTL{ top:0; left:0; align-items:flex-start; justify-content:flex-start; padding:1.6vh 0 0 1.6vh; }
+  #cTR{ top:0; right:0; align-items:flex-start; justify-content:flex-end; padding:1.6vh 1.6vh 0 0; }
+  #cBL{ bottom:0; left:0; align-items:flex-end; justify-content:flex-start; padding:0 0 1.6vh 1.6vh; }
+  #cBR{ bottom:0; right:0; align-items:flex-end; justify-content:flex-end; padding:0 1.6vh 1.6vh 0; }
+
+  #blank{
+    position:fixed; inset:0; background:#000;
+    z-index:30; display:none;
+  }
+  #blank.on{ display:block; }
+  #blank .hint{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:#141414; font-size:1.6vh; letter-spacing:0.3vh;
+    font-family:var(--font);
+  }
+</style>
+</head>
+<body class="theme-green">
+
+<div id="crt"></div>
+<div id="vignette"></div>
+
+<div id="stage">
+  <div class="panel" data-city="LA" id="block-LA">
+    <div class="city">LOS ANGELES <span class="sub">PST</span></div>
+    <div class="time" id="timeLA">--:--:--</div>
+    <div class="date" id="dateLA">---</div>
+    <div class="weather" id="wxLA"></div>
+  </div>
+  <div class="divider"></div>
+  <div class="panel" data-city="TPE" id="block-TPE">
+    <div class="city">TAIPEI <span class="sub">CST</span></div>
+    <div class="time" id="timeTPE">--:--:--</div>
+    <div class="date" id="dateTPE">---</div>
+    <div class="weather" id="wxTPE"></div>
+  </div>
+</div>
+
+<div id="status"><span id="dot"></span><span>ONLINE</span></div>
+
+<!-- hot corners: TL=theme  TR=power  BL=weather  BR=12/24 -->
+<div class="corner" id="cTL">◐</div>
+<div class="corner" id="cTR">⏻</div>
+<div class="corner" id="cBL">☁</div>
+<div class="corner" id="cBR">◷</div>
+
+<div id="blank"><div class="hint">tap to wake</div></div>
+
+<script>
+(function(){
+  var LA_TZ = "America/Los_Angeles";
+  var TPE_TZ = "Asia/Taipei";
+  var LA_COORDS = { lat:34.0522, lon:-118.2437 };
+  var TPE_COORDS = { lat:25.0330, lon:121.5654 };
+
+  var theme = localStorage.getItem("dc_theme") || "green";
+  var format = localStorage.getItem("dc_format") || "12";
+  var weatherOn = localStorage.getItem("dc_weather") !== "off";
+  var order = JSON.parse(localStorage.getItem("dc_order") || '["LA","TPE"]');
+
+  document.body.classList.remove("theme-green","theme-amber");
+  document.body.classList.add("theme-"+theme);
+  applyWeatherVisibility();
+  applyOrder();
+
+  function pad(n){ return n < 10 ? "0"+n : ""+n; }
+
+  function fmtParts(tz){
+    var now = new Date();
+    var f = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hour12: format === "12",
+      hour: format === "12" ? "numeric" : "2-digit",
+      minute:"2-digit", second:"2-digit"
+    });
+    var parts = f.formatToParts(now).reduce(function(acc,p){ acc[p.type]=p.value; return acc; }, {});
+    var d = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, weekday:"short", month:"short", day:"2-digit"
+    }).format(now).toUpperCase();
+    var h = format === "12" ? parts.hour : pad(parseInt(parts.hour,10));
+    return { h:h, m:parts.minute, s:parts.second, ap:parts.dayPeriod || "", d:d };
+  }
+
+  function render(id, tz){
+    var p = fmtParts(tz);
+    var html = p.h+":"+p.m+":"+p.s;
+    if(format === "12") html += '<span class="ampm">'+p.ap.toUpperCase()+'</span>';
+    document.getElementById("time"+id).innerHTML = html;
+    document.getElementById("date"+id).textContent = p.d;
+  }
+
+  function tick(){
+    render("LA", LA_TZ);
+    render("TPE", TPE_TZ);
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // burn-in mitigation
+  function shiftStage(){
+    var maxShift = 12;
+    var x = Math.round((Math.random()*2-1)*maxShift);
+    var y = Math.round((Math.random()*2-1)*maxShift);
+    document.getElementById("stage").style.transform = "translate("+x+"px,"+y+"px)";
+  }
+  shiftStage();
+  setInterval(shiftStage, 60000);
+
+  // weather
+  function wcode(code){
+    if(code===0) return "CLEAR";
+    if([1,2,3].indexOf(code)>-1) return "CLOUDY";
+    if([45,48].indexOf(code)>-1) return "FOG";
+    if([51,53,55,56,57].indexOf(code)>-1) return "DRIZZLE";
+    if([61,63,65,66,67,80,81,82].indexOf(code)>-1) return "RAIN";
+    if([71,73,75,77,85,86].indexOf(code)>-1) return "SNOW";
+    if([95,96,99].indexOf(code)>-1) return "STORM";
+    return "—";
+  }
+  function loadWeather(coords, elId, unit){
+    var url = "https://api.open-meteo.com/v1/forecast?latitude="+coords.lat+"&longitude="+coords.lon+
+      "&current=temperature_2m,weather_code&temperature_unit="+unit;
+    fetch(url).then(function(r){ return r.json(); }).then(function(data){
+      var t = Math.round(data.current.temperature_2m);
+      var c = wcode(data.current.weather_code);
+      var deg = unit === "fahrenheit" ? "°F" : "°C";
+      document.getElementById(elId).innerHTML = '<span class="temp">'+t+deg+'</span> '+c;
+    }).catch(function(){
+      document.getElementById(elId).textContent = "";
+    });
+  }
+  function refreshWeather(){
+    if(!weatherOn) return;
+    loadWeather(LA_COORDS, "wxLA", "fahrenheit");
+    loadWeather(TPE_COORDS, "wxTPE", "celsius");
+  }
+  refreshWeather();
+  setInterval(refreshWeather, 15*60000);
+
+  function applyWeatherVisibility(){
+    document.getElementById("wxLA").style.display = weatherOn ? "block" : "none";
+    document.getElementById("wxTPE").style.display = weatherOn ? "block" : "none";
+  }
+
+  // hot corners
+  document.getElementById("cTL").addEventListener("click", function(){
+    theme = theme === "green" ? "amber" : "green";
+    localStorage.setItem("dc_theme", theme);
+    document.body.classList.remove("theme-green","theme-amber");
+    document.body.classList.add("theme-"+theme);
+  });
+
+  document.getElementById("cTR").addEventListener("click", function(){
+    document.getElementById("blank").classList.add("on");
+  });
+
+  document.getElementById("cBL").addEventListener("click", function(){
+    weatherOn = !weatherOn;
+    localStorage.setItem("dc_weather", weatherOn ? "on" : "off");
+    applyWeatherVisibility();
+    if(weatherOn) refreshWeather();
+  });
+
+  document.getElementById("cBR").addEventListener("click", function(){
+    format = format === "12" ? "24" : "12";
+    localStorage.setItem("dc_format", format);
+    tick();
+  });
+
+  var blank = document.getElementById("blank");
+  blank.addEventListener("click", function(){
+    blank.classList.remove("on");
+  });
+
+  // wake lock
+  function requestWake(){
+    if("wakeLock" in navigator){
+      navigator.wakeLock.request("screen").catch(function(){});
+    }
+  }
+  requestWake();
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible") requestWake();
+  });
+
+  // draggable / reorderable panels (swap top/bottom, stacked layout)
+  function applyOrder(){
+    var stage = document.getElementById("stage");
+    var divider = stage.querySelector(".divider");
+    order.forEach(function(city){
+      stage.insertBefore(document.getElementById("block-"+city), divider);
+    });
+  }
+
+  (function setupDrag(){
+    var stage = document.getElementById("stage");
+    var dragEl = null, startY = 0, startTop = 0, otherEl = null;
+
+    function getPanels(){
+      return Array.prototype.slice.call(stage.querySelectorAll(".panel"));
+    }
+
+    function onDown(e, el){
+      dragEl = el;
+      dragEl.classList.add("dragging");
+      startY = (e.touches ? e.touches[0].clientY : e.clientY);
+      startTop = el.getBoundingClientRect().top;
+      var panels = getPanels();
+      otherEl = panels.filter(function(p){ return p !== dragEl; })[0];
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("touchmove", onMove, {passive:false});
+      document.addEventListener("mouseup", onUp);
+      document.addEventListener("touchend", onUp);
+    }
+
+    function onMove(e){
+      if(!dragEl) return;
+      e.preventDefault();
+      var y = (e.touches ? e.touches[0].clientY : e.clientY);
+      var dy = y - startY;
+      dragEl.style.transform = "translateY("+dy+"px)";
+
+      if(otherEl){
+        var dragMid = dragEl.getBoundingClientRect().top + dragEl.offsetHeight/2;
+        var otherRect = otherEl.getBoundingClientRect();
+        var otherMid = otherRect.top + otherRect.height/2;
+        if((startTop < otherRect.top && dragMid > otherMid) ||
+           (startTop > otherRect.top && dragMid < otherMid)){
+          if(startTop < otherRect.top){
+            stage.insertBefore(otherEl, dragEl);
+          } else {
+            stage.insertBefore(dragEl, otherEl);
+          }
+          startTop = dragEl.getBoundingClientRect().top;
+          startY = y;
+          dragEl.style.transform = "translateY(0px)";
+        }
+      }
+    }
+
+    function onUp(){
+      if(!dragEl) return;
+      dragEl.classList.remove("dragging");
+      dragEl.style.transform = "";
+      order = getPanels().map(function(p){ return p.getAttribute("data-city"); });
+      localStorage.setItem("dc_order", JSON.stringify(order));
+      dragEl = null; otherEl = null;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchend", onUp);
+    }
+
+    getPanels().forEach(function(el){
+      el.addEventListener("mousedown", function(e){ onDown(e, el); });
+      el.addEventListener("touchstart", function(e){ onDown(e, el); }, {passive:true});
+    });
+  })();
+})();
+</script>
+</body>
+</html>
