@@ -58,7 +58,7 @@
     align-items:center; justify-content:center;
     padding:1.2vh 4vw;
     touch-action:none;
-    transition:transform 0.25s ease;
+    transition:transform 0.25s ease, opacity 3s ease;
   }
   .panel.dragging{ transition:none; z-index:10; }
 
@@ -94,6 +94,13 @@
     min-height:3.4vh;
   }
   .weather .temp{ opacity:1; text-shadow:0 0 4px rgba(var(--p),0.4); }
+
+  .callhint{
+    font-size:1.9vh; color:rgb(var(--p)); opacity:0;
+    margin-top:1vh; letter-spacing:0.5vh;
+    transition:opacity 1.5s ease;
+  }
+  .callhint.show{ opacity:0.55; }
 
   #status{
     position:fixed; bottom:1.6vh; left:0; right:0;
@@ -143,6 +150,7 @@
     <div class="time" id="timeLA">--:--:--</div>
     <div class="date" id="dateLA">---</div>
     <div class="weather" id="wxLA"></div>
+    <div class="callhint" id="callHint">GOOD TIME TO CALL</div>
   </div>
   <div class="divider"></div>
   <div class="panel" data-city="TPE" id="block-TPE">
@@ -205,9 +213,39 @@
     document.getElementById("date"+id).textContent = p.d;
   }
 
+  function getHourFrac(tz){
+    var now = new Date();
+    var f = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hour:"2-digit", minute:"2-digit", hour12:false
+    });
+    var parts = f.formatToParts(now).reduce(function(acc,p){ acc[p.type]=p.value; return acc; }, {});
+    return parseInt(parts.hour,10) + parseInt(parts.minute,10)/60;
+  }
+
+  // continuous brightness curve: peaks at 2pm, dims deepest at 2am, smooth cosine transition
+  function dayNightOpacity(hourFrac){
+    var minOp = 0.38, maxOp = 1.0, peakHour = 14;
+    var diff = hourFrac - peakHour;
+    if(diff > 12) diff -= 24;
+    if(diff < -12) diff += 24;
+    var t = 0.5 + 0.5*Math.cos(diff/12*Math.PI);
+    return minOp + (maxOp - minOp) * t;
+  }
+
+  function applyDayNight(){
+    var laHourFrac = getHourFrac(LA_TZ);
+    var tpeHourFrac = getHourFrac(TPE_TZ);
+    document.getElementById("block-LA").style.opacity = dayNightOpacity(laHourFrac);
+    document.getElementById("block-TPE").style.opacity = dayNightOpacity(tpeHourFrac);
+
+    var callOk = (laHourFrac >= 8 && laHourFrac < 21);
+    document.getElementById("callHint").classList.toggle("show", callOk);
+  }
+
   function tick(){
     render("LA", LA_TZ);
     render("TPE", TPE_TZ);
+    applyDayNight();
   }
   tick();
   setInterval(tick, 1000);
